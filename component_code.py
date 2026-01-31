@@ -1,6 +1,8 @@
 import RPi. GPIO as GPIO
 import time
 from gpiozero import LED, Button, Servo
+import cv2
+import numpy as np
 
 GPIO.setmode(GPIO.BCM)
 
@@ -38,9 +40,32 @@ def is_full():
     return distance < 4
 
 def detect_object():
-    // need to implement object detection logic later
-    // also need to put camera ai code here as well
-    return True
+    ret1, frame1 = cap.read()
+    frame1 = frame1[100:500, 100:500]
+    time.sleep(0.3)
+    ret2, frame2 = cap.read()
+    frame2 = frame2[100:500, 100:500]
+    if ret1 and ret2:
+        gray1 = cv2.cvtColor(frame1, cv2.COLOR_BGR2GRAY)
+        blurredGray1 = cv2.GaussianBlur(gray1, (11, 11), 0)
+        gray2 = cv2.cvtColor(frame2, cv2.COLOR_BGR2GRAY)
+        blurredGray2 = cv2.GaussianBlur(gray2, (11, 11), 0)
+        diff = cv2.absdiff(blurredGray1, blurredGray2)
+        _, threshedDiff = cv2.threshold(diff, 30, 255, cv2.THRESH_BINARY)
+        contours, _ = cv2.findContours(threshedDiff, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        frame2Copy = frame2.copy()
+        for contour in contours:
+            if cv2.contourArea(contour) >= 600: #change to 500 or 550? Or maybe 650?
+                x, y, w, h = cv2.boundingRect(contour)
+                cv2.rectangle(frame2, (x, y), (x+w, y+h), (0, 255, 0), 2)
+                cv2.imshow("cam", frame2)
+                cv2.imshow("contours", cv2.drawContours(frame2Copy, contours, -1, (0, 255, 0), 2))
+                return True
+        return False
+    return None
+
+def classify_object():
+    // maybe put AI code in here instead
 
 def rotate_servo(degree):
     servo.value = degree / 180
