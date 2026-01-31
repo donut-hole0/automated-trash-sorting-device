@@ -65,7 +65,7 @@ def detect_object():
     return None
 
 def classify_object():
-    // maybe put AI code in here instead
+    # maybe put AI code in here instead
 
 def rotate_servo(degree):
     servo.value = degree / 180
