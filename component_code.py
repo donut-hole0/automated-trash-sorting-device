@@ -1,4 +1,4 @@
-import RPi. GPIO as GPIO
+import RPi.GPIO as GPIO
 import time
 from gpiozero import LED, Button, Servo
 import cv2
@@ -8,12 +8,22 @@ GPIO.setmode(GPIO.BCM)
 
 TRIG = 5
 ECHO = 6
+
+RESETBUTTON = Button(7) 
+"""You Can Change This GPIO from 7 if you want"""
+
 GPIO.setup(TRIG, GPIO.OUT)
 GPIO.setup(ECHO, GPIO.IN)
 
-redLED = LED(22)
-whiteLED = LED(23)
-servo = Servo(18)
+REDLED = LED(22)
+WHITELED = LED(23)
+SERVO = Servo(18)
+
+"""You Can Use This For AI Code As Well, This Is The First Frame On Startup For Comparison with Absdiff"""
+ret1, frame1 = cap.read()
+frame1 = frame1[100:500, 100:500]
+
+containerFilled = False
 
 def get_distance():
     GPIO.output(TRIG, False)
@@ -35,14 +45,7 @@ def get_distance():
 
     return distance
 
-def is_full():
-    distance = get_distance()
-    return distance < 4
-
 def detect_object():
-    ret1, frame1 = cap.read()
-    frame1 = frame1[100:500, 100:500]
-    time.sleep(0.3)
     ret2, frame2 = cap.read()
     frame2 = frame2[100:500, 100:500]
     if ret1 and ret2:
@@ -65,10 +68,11 @@ def detect_object():
     return None
 
 def classify_object():
-    # maybe put AI code in here instead
+    # PUT AI CODE HERE
+    return
 
 def rotate_servo(degree):
-    servo.value = degree / 180
+    SERVO.value = degree / 180
     time.sleep(0.5)
 
 def open_chute():
@@ -77,74 +81,58 @@ def open_chute():
 def close_chute():
     print("Chute closed")
 
-def indicate_full():
-    redLED.on()
-    whiteLED.off()
-    print("Bin is full")
-
-def clear_indication():
-    redLED.off()
-    whiteLED.on()
-    print("Bin has space")
-
-def cv_on():
-    whiteLED.on()
-
-def cv_off():
-    whiteLED.off()
-
-def record_fill_amount(bin_name):
-    print(f"Recording fill amount for {bin_name}")
+def record_fill_amount(compartment):
+    distance = get_distance()
+    if distance < 4:
+        containerFilled = True
+    print("Recording fill amount for " + compartment)
 
 
 try: 
     while True:
-        if not is_full():
-            indicate_full()
-            time.sleep(2)
-            continue
+        if RESETBUTTON.is_active():
+            containerFilled = False
+            REDLED.off()
+        if containerFilled:
+            REDLED.on()
+            print("bin is full")
         else:
-            clear_indication()
-        
-        if detect_object():
-            cv_on()
+            if detect_object():
+                WHITELED.on()
 
-            //ai model output goes here
-            // example trash_type
-            trash_type = "plastic"
-            cv_off()
+                trash_type = classify_object()
+                trash_type = "plastic" #test code, remove all placeholder code after testing
+                WHITELED.off()
 
-            if trash_type == "plastic":
-                rotate_servo(-60)
-                open_chute()
-                time.sleep(2)
-                close_chute()
-                rotate_servo(120)
-                rotate_servo(-60)
-                record_fill_amount("plastic")
-            
-            elif trash_type == "aluminum":
-                rotate_servo(180)
-                open_chute()
-                time.sleep(2)
-                close_chute()
-                rotate_servo(-120)
-                rotate_servo(120)
-                record_fill_amount("aluminum")
-            
-            elif trash_type == "trash":
-                rotate_servo(60)
-                open_chute()
-                time.sleep(2)
-                close_chute()
-                rotate_servo(120)
-                rotate_servo(-60)
-                record_fill_amount("trash")
-            
-        time.sleep(2)
+                if trash_type == "plastic":
+                    rotate_servo(-120)
+                    open_chute()
+                    time.sleep(1)
+                    close_chute()
+                    rotate_servo(-180)
+                    record_fill_amount("plastic")
+                    rotate_servo(-60)
+                
+                elif trash_type == "trash":
+                    open_chute()
+                    time.sleep(1)
+                    close_chute()
+                    rotate_servo(180)
+                    record_fill_amount("plastic")
+                    rotate_servo(180)    
+                
+                elif trash_type == "aluminum":
+                    rotate_servo(120)
+                    open_chute()
+                    time.sleep(1)
+                    close_chute()
+                    rotate_servo(180)
+                    record_fill_amount("aluminum")
+                    rotate_servo(60)
+                
+        time.sleep(1)
 
 except KeyboardInterrupt:
     print("Exiting program...")
 finally:
     GPIO.cleanup()
-
