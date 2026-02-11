@@ -1,138 +1,176 @@
-import RPi.GPIO as GPIO
 import time
-from gpiozero import LED, Button, Servo
+import os
 import cv2
 import numpy as np
+import tflite_runtime.interpreter as tflite
+import psutil
+from gpiozero import LED, Servo, Button, DistanceSensor
 
-GPIO.setmode(GPIO.BCM)
+# ------------------ CONFIG ------------------
+SHOW_WINDOW = False          
+FRAME_WIDTH = 640
+FRAME_HEIGHT = 480
+BACKGROUND_BLUR = (11, 11)
+DIFF_THRESHOLD = 30
+MIN_CONTOUR_AREA = 500
+INFERENCE_INTERVAL = 0.2    
 
-TRIG = 5
-ECHO = 6
+# GPIO pins (BCM numbering)
+TRIG_PIN = 5
+ECHO_PIN = 6
+RESET_BUTTON_PIN = 7
+RED_LED_PIN = 22
+WHITE_LED_PIN = 23
+SERVO1_PIN = 18
+SERVO2_PIN = 19  
 
-RESETBUTTON = Button(7) 
-"""You Can Change This GPIO from 7 if you want"""
+# ------------------ COMPONENT SETUP ------------------
+# We set pulse widths to 0.5ms - 2.5ms which is standard for most servos
+REDLED = LED(RED_LED_PIN)
+WHITELED = LED(WHITE_LED_PIN)
+SERVO1 = Servo(SERVO1_PIN, min_pulse_width=0.5/1000, max_pulse_width=2.5/1000)
+SERVO2 = Servo(SERVO2_PIN, min_pulse_width=0.5/1000, max_pulse_width=2.5/1000)
+RESETBUTTON = Button(RESET_BUTTON_PIN, pull_up=True)
 
-GPIO.setup(TRIG, GPIO.OUT)
-GPIO.setup(ECHO, GPIO.IN)
-
-REDLED = LED(22)
-WHITELED = LED(23)
-SERVO = Servo(18)
-
-"""You Can Use This For AI Code As Well, This Is The First Frame On Startup For Comparison with Absdiff"""
-ret1, frame1 = cap.read()
-frame1 = frame1[100:500, 100:500]
+# Note: If distance still says "No Echo", check that the sensor has 5V power!
+ULTRASONIC = DistanceSensor(echo=ECHO_PIN, trigger=TRIG_PIN, max_distance=2)
 
 containerFilled = False
+peak_ram_mb = 0
+process = psutil.Process()
 
+# ------------------ HELPER FUNCTIONS ------------------
 def get_distance():
-    GPIO.output(TRIG, False)
-    time.sleep(0.05)
+    return round(ULTRASONIC.distance * 100, 2)
 
-    GPIO.output(TRIG, True)
-    time.sleep(0.00001)
-    GPIO.output(TRIG, False)
+def rotate_servo(servo, degree):
+    """Moves servo and then detaches signal to stop twitching/jitter."""
+    # Maps 0-180 to -1 to 1
+    target_value = (degree / 90.0) - 1.0
+    servo.value = target_value
+    time.sleep(0.8)  # Time to reach position
+    servo.value = None  # STOP signal to kill jitter
 
-    while GPIO.input(ECHO) == 0:
-        pulse_start = time.time()
+def load_labels(labels_path="labels.txt"):
+    try:
+        with open(labels_path, 'r') as f:
+            return [line.strip() for line in f.readlines()]
+    except FileNotFoundError:
+        print("labels.txt not found")
+        return None
 
-    while GPIO.input(ECHO) == 1:
-        pulse_end = time.time()
+def softmax(x):
+    x = np.clip(x, -500, 500)
+    exp_x = np.exp(x - np.max(x))
+    return exp_x / exp_x.sum()
 
-    pulse_duration = pulse_end - pulse_start
-    distance = pulse_duration * 17150
-    distance = round(distance, 2)
+def detect_object(frame, bg_gray):
+    gray = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
+    gray = cv2.GaussianBlur(gray, BACKGROUND_BLUR, 0)
+    diff = cv2.absdiff(gray, bg_gray)
+    _, mask = cv2.threshold(diff, DIFF_THRESHOLD, 255, cv2.THRESH_BINARY)
+    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    if contours:
+        largest = max(contours, key=cv2.contourArea)
+        if cv2.contourArea(largest) >= MIN_CONTOUR_AREA:
+            x, y, w, h = cv2.boundingRect(largest)
+            return True, frame[y:y+h, x:x+w]
+    return False, frame
 
-    return distance
+def classify_object(interpreter, input_details, output_details, img, input_dtype, labels):
+    img_resized = cv2.resize(img, (input_details[0]['shape'][2], input_details[0]['shape'][1]))
+    if input_dtype != np.uint8:
+        img_resized = img_resized.astype(np.float32) / 255.0
+    img_resized = np.expand_dims(img_resized, axis=0)
+    interpreter.set_tensor(input_details[0]['index'], img_resized)
+    interpreter.invoke()
+    output = interpreter.get_tensor(output_details[0]['index'])[0]
+    probabilities = softmax(output)
+    class_id = np.argmax(probabilities)
+    confidence = probabilities[class_id]
+    label = labels[class_id] if labels else f"Class {class_id}"
+    return label, confidence
 
-def detect_object():
-    ret2, frame2 = cap.read()
-    frame2 = frame2[100:500, 100:500]
-    if ret1 and ret2:
-        gray1 = cv2.cvtColor(frame1, cv2.COLOR_BGR2GRAY)
-        blurredGray1 = cv2.GaussianBlur(gray1, (11, 11), 0)
-        gray2 = cv2.cvtColor(frame2, cv2.COLOR_BGR2GRAY)
-        blurredGray2 = cv2.GaussianBlur(gray2, (11, 11), 0)
-        diff = cv2.absdiff(blurredGray1, blurredGray2)
-        _, threshedDiff = cv2.threshold(diff, 30, 255, cv2.THRESH_BINARY)
-        contours, _ = cv2.findContours(threshedDiff, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        frame2Copy = frame2.copy()
-        for contour in contours:
-            if cv2.contourArea(contour) >= 600: #change to 500 or 550? Or maybe 650?
-                x, y, w, h = cv2.boundingRect(contour)
-                cv2.rectangle(frame2, (x, y), (x+w, y+h), (0, 255, 0), 2)
-                cv2.imshow("cam", frame2)
-                cv2.imshow("contours", cv2.drawContours(frame2Copy, contours, -1, (0, 255, 0), 2))
-                return True
-        return False
-    return None
+# ------------------ LOAD MODEL ------------------
+labels = load_labels()
+interpreter = tflite.Interpreter(model_path="model.tflite")
+interpreter.allocate_tensors()
+input_details = interpreter.get_input_details()
+output_details = interpreter.get_output_details()
+input_dtype = input_details[0]['dtype']
 
-def classify_object():
-    # PUT AI CODE HERE
-    return
+# ------------------ CAMERA SETUP (BOOKWORM FIX) ------------------
+# We use V4L2 and MJPG to avoid the select() timeout errors
+cap = cv2.VideoCapture(0, cv2.CAP_V4L2)
+cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
+cap.set(cv2.CAP_PROP_FRAME_WIDTH, FRAME_WIDTH)
+cap.set(cv2.CAP_PROP_FRAME_HEIGHT, FRAME_HEIGHT)
 
-def rotate_servo(degree):
-    SERVO.value = degree / 180
-    time.sleep(0.5)
+time.sleep(2)
+ret, frame_bg = cap.read()
+if ret:
+    frame_bg = frame_bg[100:500, 100:500] 
+    bg_gray = cv2.cvtColor(frame_bg, cv2.COLOR_BGR2GRAY)
+    bg_gray = cv2.GaussianBlur(bg_gray, BACKGROUND_BLUR, 0)
+else:
+    print("Failed to capture background. Check camera connection.")
 
-def open_chute():
-    print("Chute opened")
+print("Setup complete. Starting loop...")
 
-def close_chute():
-    print("Chute closed")
+# ------------------ MAIN LOOP ------------------
+last_inference_time = 0
+last_valid_label = "Waiting..."
+frame_count = 0
 
-def record_fill_amount(compartment):
-    distance = get_distance()
-    if distance < 4:
-        containerFilled = True
-    print("Recording fill amount for " + compartment)
-
-
-try: 
+try:
     while True:
-        if RESETBUTTON.is_active():
+        frame_count += 1
+        ret, frame = cap.read()
+        if not ret: continue
+        
+        frame = frame[100:500, 100:500]
+
+        if RESETBUTTON.is_pressed:
             containerFilled = False
             REDLED.off()
+            print("Reset Pressed")
+
+        object_detected, obj_frame = detect_object(frame, bg_gray)
+
         if containerFilled:
             REDLED.on()
-            print("bin is full")
+        elif object_detected:
+            WHITELED.on()
+            current_time = time.time()
+            if current_time - last_inference_time >= INFERENCE_INTERVAL:
+                label, confidence = classify_object(interpreter, input_details, output_details, obj_frame, input_dtype, labels)
+                if confidence > 0.3:
+                    last_valid_label = label
+                    print(f">>> {label} ({confidence*100:.1f}%)")
+
+                    if label.lower() == "plastic":
+                        rotate_servo(SERVO1, 45)  # Adjust degrees as needed
+                        time.sleep(1)
+                        rotate_servo(SERVO1, 90)
+                    elif label.lower() == "aluminum":
+                        rotate_servo(SERVO2, 45)
+                        time.sleep(1)
+                        rotate_servo(SERVO2, 90)
+
+                last_inference_time = current_time
         else:
-            if detect_object():
-                WHITELED.on()
+            WHITELED.off()
 
-                trash_type = classify_object()
-                trash_type = "plastic" #test code, remove all placeholder code after testing
-                WHITELED.off()
+        if SHOW_WINDOW:
+            cv2.imshow("Feed", frame)
+            if cv2.waitKey(1) & 0xFF == ord('q'): break
 
-                if trash_type == "plastic":
-                    rotate_servo(-120)
-                    open_chute()
-                    time.sleep(1)
-                    close_chute()
-                    rotate_servo(-180)
-                    record_fill_amount("plastic")
-                    rotate_servo(-60)
-                
-                elif trash_type == "trash":
-                    open_chute()
-                    time.sleep(1)
-                    close_chute()
-                    rotate_servo(180)
-                    record_fill_amount("plastic")
-                    rotate_servo(180)    
-                
-                elif trash_type == "aluminum":
-                    rotate_servo(120)
-                    open_chute()
-                    time.sleep(1)
-                    close_chute()
-                    rotate_servo(180)
-                    record_fill_amount("aluminum")
-                    rotate_servo(60)
-                
-        time.sleep(1)
+        peak_ram_mb = max(peak_ram_mb, process.memory_info().rss / 1024 / 1024)
+        time.sleep(0.01)
 
 except KeyboardInterrupt:
-    print("Exiting program...")
+    print("Stopping...")
 finally:
-    GPIO.cleanup()
+    cap.release()
+    cv2.destroyAllWindows()
+    # Servos are released automatically by gpiozero
