@@ -17,13 +17,15 @@ GPIO.setup(ECHO, GPIO.IN)
 
 REDLED = LED(22)
 WHITELED = LED(23)
-SERVO = Servo(18)
+SERVO_R = Servo(18)
+SERVO_C = Servo(17)
 
 """You Can Use This For AI Code As Well, This Is The First Frame On Startup For Comparison with Absdiff"""
 cap = cv2.VideoCapture(0) #change to 1 or 2 if 0 doesnt work
 ret1, frame1 = cap.read()
 frame1 = frame1[100:500, 100:500]
 
+global containerFilled
 containerFilled = False
 
 def get_distance():
@@ -34,11 +36,17 @@ def get_distance():
     time.sleep(0.00001)
     GPIO.output(TRIG, False)
 
+    timeout = time.time() + 0.2
+
     while GPIO.input(ECHO) == 0:
         pulse_start = time.time()
+        if time.time() > timeout:
+            return -1
 
     while GPIO.input(ECHO) == 1:
         pulse_end = time.time()
+        if time.time() > timeout:
+            return -1
 
     pulse_duration = pulse_end - pulse_start
     distance = pulse_duration * 17150
@@ -60,10 +68,6 @@ def detect_object():
         frame2Copy = frame2.copy()
         for contour in contours:
             if cv2.contourArea(contour) >= 600: #change to 500 or 550? Or maybe 650?
-                x, y, w, h = cv2.boundingRect(contour)
-                cv2.rectangle(frame2, (x, y), (x+w, y+h), (0, 255, 0), 2)
-                cv2.imshow("cam", frame2)
-                cv2.imshow("contours", cv2.drawContours(frame2Copy, contours, -1, (0, 255, 0), 2))
                 return True
         return False
     return None
@@ -73,25 +77,30 @@ def classify_object():
     return
 
 def rotate_servo(degree):
-    SERVO.value = degree / 180
+    SERVO_R.value = degree / 180
     time.sleep(0.5)
 
 def open_chute():
+    SERVO_C.value = 90 / 180
     print("Chute opened")
 
 def close_chute():
+    SERVO_C.value = -90 / 180
     print("Chute closed")
 
 def record_fill_amount(compartment):
     distance = get_distance()
-    if distance < 4:
+    if distance < 0:
+        print("Recording Failed")
+    elif distance < 8:
+        global containerFilled
         containerFilled = True
-    print("Recording fill amount for " + compartment)
+        print("Recording fill amount for " + compartment)
 
 
 try: 
     while True:
-        if RESETBUTTON.is_active():
+        if RESETBUTTON.is_active:
             containerFilled = False
             REDLED.off()
         if containerFilled:
@@ -102,7 +111,6 @@ try:
                 WHITELED.on()
 
                 trash_type = classify_object()
-                trash_type = "plastic" #test code, remove all placeholder code after testing
                 WHITELED.off()
 
                 if trash_type == "plastic":
@@ -119,7 +127,7 @@ try:
                     time.sleep(1)
                     close_chute()
                     rotate_servo(180)
-                    record_fill_amount("plastic")
+                    record_fill_amount("trash")
                     rotate_servo(180)    
                 
                 elif trash_type == "aluminum":
@@ -130,10 +138,12 @@ try:
                     rotate_servo(180)
                     record_fill_amount("aluminum")
                     rotate_servo(60)
-                
+        ret1, frame1 = cap.read()
+        frame1 = frame1[100:500, 100:500]
         time.sleep(1)
 
 except KeyboardInterrupt:
     print("Exiting program...")
 finally:
+    cap.release()
     GPIO.cleanup()
