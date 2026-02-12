@@ -23,7 +23,8 @@ SERVO_C = Servo(17)
 """You Can Use This For AI Code As Well, This Is The First Frame On Startup For Comparison with Absdiff"""
 cap = cv2.VideoCapture(0) #change to 1 or 2 if 0 doesnt work
 ret1, frame1 = cap.read()
-frame1 = frame1[100:500, 100:500]
+if ret1:
+    frame1 = frame1[100:500, 100:500]
 
 global containerFilled
 containerFilled = False
@@ -56,6 +57,8 @@ def get_distance():
 
 def detect_object():
     ret2, frame2 = cap.read()
+    if not ret2:
+        return False
     frame2 = frame2[100:500, 100:500]
     if ret1 and ret2:
         gray1 = cv2.cvtColor(frame1, cv2.COLOR_BGR2GRAY)
@@ -65,7 +68,6 @@ def detect_object():
         diff = cv2.absdiff(blurredGray1, blurredGray2)
         _, threshedDiff = cv2.threshold(diff, 30, 255, cv2.THRESH_BINARY)
         contours, _ = cv2.findContours(threshedDiff, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        frame2Copy = frame2.copy()
         for contour in contours:
             if cv2.contourArea(contour) >= 600: #change to 500 or 550? Or maybe 650?
                 return True
@@ -74,11 +76,12 @@ def detect_object():
 
 def classify_object():
     # PUT AI CODE HERE
-    return
 
-def rotate_servo(degree):
-    SERVO_R.value = degree / 180
-    time.sleep(0.5)
+def rotate_servo(duration):
+    SERVO_R.value = 0.4
+    time.sleep(duration)
+    SERVO_R.value = 0
+    time.sleep(0.1)
 
 def open_chute():
     SERVO_C.value = 90 / 180
@@ -96,7 +99,6 @@ def record_fill_amount(compartment):
         global containerFilled
         containerFilled = True
         print("Recording fill amount for " + compartment)
-
 
 try: 
     while True:
@@ -138,8 +140,10 @@ try:
                     rotate_servo(180)
                     record_fill_amount("aluminum")
                     rotate_servo(60)
+
         ret1, frame1 = cap.read()
-        frame1 = frame1[100:500, 100:500]
+        if ret1:
+            frame1 = frame1[100:500, 100:500]
         time.sleep(1)
 
 except KeyboardInterrupt:
