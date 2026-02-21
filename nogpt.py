@@ -1,33 +1,54 @@
 import RPi.GPIO as GPIO
 import time
-from gpiozero import LED, Button, Servo
+from gpiozero import LED, Button, Servo, DistanceSensor
 import cv2
 import numpy as np
+import tflite_runtime.interpreter as tflite
+from picamera2 import Picamera2
 
+#camera code
+picam = Picamera2()
+config = picam.create_preview_configuration(
+    main={"format": "RGB888", "size": (640, 480)}
+)
+picam.configure(config)
+
+#AI model setup
+# Load labels
+with open("labels.txt", "r") as f:
+    labels = [line.strip() for line in f.readlines()]
+
+# Load model
+interpreter = tflite.Interpreter(model_path="model.tflite")
+interpreter.allocate_tensors()
+
+# Get input and output details
+input_details = interpreter.get_input_details()
+output_details = interpreter.get_output_details()
+
+#Electrical component setup
 GPIO.setmode(GPIO.BCM)
 
-TRIG = 5
-ECHO = 6
+SENSOR = DistanceSensor(echo=6, trigger=5)
 
 RESETBUTTON = Button(7) 
-"""You Can Change This GPIO from 7 if you want"""
-
-GPIO.setup(TRIG, GPIO.OUT)
-GPIO.setup(ECHO, GPIO.IN)
+LIM_SWITCH = Button(8)
+"""You Can Change These GPIOs If Needed"""
 
 REDLED = LED(22)
 WHITELED = LED(23)
 SERVO_R = Servo(18)
 SERVO_C = Servo(17)
 
-"""You Can Use This For AI Code As Well, This Is The First Frame On Startup For Comparison with Absdiff"""
-cap = cv2.VideoCapture(0) #change to 1 or 2 if 0 doesnt work
-ret1, frame1 = cap.read()
-if ret1:
-    frame1 = frame1[100:500, 100:500]
+mult = 1.913
 
-global containerFilled
+frame1 = None
+
 containerFilled = False
+
+def get_frame():
+    frame = picam.capture_array()
+    return frame[100:500, 100:500]
 
 def get_distance():
     GPIO.output(TRIG, False)
@@ -56,11 +77,8 @@ def get_distance():
     return distance
 
 def detect_object():
-    ret2, frame2 = cap.read()
-    if not ret2:
-        return False
-    frame2 = frame2[100:500, 100:500]
-    if ret1 and ret2:
+    frame2 = get_frame()
+    if frame1 is not None:
         gray1 = cv2.cvtColor(frame1, cv2.COLOR_BGR2GRAY)
         blurredGray1 = cv2.GaussianBlur(gray1, (11, 11), 0)
         gray2 = cv2.cvtColor(frame2, cv2.COLOR_BGR2GRAY)
@@ -71,83 +89,127 @@ def detect_object():
         for contour in contours:
             if cv2.contourArea(contour) >= 600: #change to 500 or 550? Or maybe 650?
                 return True
-        return False
-    return None
+    return False
 
 def classify_object():
-    # PUT AI CODE HERE
+    frame3 = get_frame()
+    # Resize to model size (usually 224x224)
+    frame3 = cv2.resize(frame3, (224, 224))
 
-def rotate_servo(duration):
-    SERVO_R.value = 0.4
-    time.sleep(duration)
+    # Convert to numpy and normalize
+    input_data = np.array(frame3, dtype=np.float32)
+
+    # IMPORTANT: try this first (most Teachable Machine models use this)
+    input_data = (input_data / 127.5) - 1
+
+    # Add batch dimension
+    input_data = np.expand_dims(input_data, axis=0)
+
+    # Run inference
+    interpreter.set_tensor(input_details[0]['index'], input_data)
+    interpreter.invoke()
+
+    # Get results
+    output_data = interpreter.get_tensor(output_details[0]['index'])
+
+    # Get prediction
+    predicted_index = np.argmax(output_data)
+
+    return labels[predicted_index]
+
+def rotate_servo(duration, direction):
+  time.sleep(0.01)
+  SERVO_R.value = 0.444444444444444*direction
+  time.sleep(duration*mult/1000)
+  SERVO_R.value = 0
+  time.sleep(0.03)
+  SERVO_R.detach()
+  time.sleep(0.1)
+
+def return_home():
+    time.sleep(0.01)
+    print("returnSpin")
+    SERVO_R.value = 0.444444444444444 #change to -0.44 if wrong direction
+    start = time.monotonic() * 1000
+    while start+700 > time.monotonic()*1000: #700ms is rotation duration
+        if LIM_SWITCH.is_active == True:
+            SERVO_R.value = 0
+            print("home")
+            SERVO_R.detach()
+
     SERVO_R.value = 0
-    time.sleep(0.1)
+    print("home")
+    SERVO_R.detach()
 
 def open_chute():
     SERVO_C.value = 90 / 180
+    time.sleep(0.16)
+    SERVO_C.detach()
     print("Chute opened")
 
 def close_chute():
-    SERVO_C.value = -90 / 180
+    SERVO_C.value = 180 / 180
+    time.sleep(0.16)
+    SERVO_C.detach()
     print("Chute closed")
 
-def record_fill_amount(compartment):
-    distance = get_distance()
-    if distance < 0:
-        print("Recording Failed")
-    elif distance < 8:
+def record_fill_amount():
+    distance = SENSOR.distance * 100
+    print("distance" + distance)
+    if distance < 8:
         global containerFilled
         containerFilled = True
-        print("Recording fill amount for " + compartment)
+        print("recording succeeded")
 
 try: 
+    picam.start()
+    frame1 = get_frame()
     while True:
         if RESETBUTTON.is_active:
             containerFilled = False
             REDLED.off()
+            frame1 = get_frame()
+            print("reset fill")
         if containerFilled:
             REDLED.on()
-            print("bin is full")
+            print("full")
         else:
+            time.sleep(1000)
             if detect_object():
                 WHITELED.on()
 
                 trash_type = classify_object()
                 WHITELED.off()
 
-                if trash_type == "plastic":
-                    rotate_servo(-120)
+                if trash_type == "metal":
+                    rotate_servo(120, -1)
                     open_chute()
-                    time.sleep(1)
+                    time.sleep(0.7)
                     close_chute()
-                    rotate_servo(-180)
-                    record_fill_amount("plastic")
-                    rotate_servo(-60)
+                    rotate_servo(180, -1)
+                    record_fill_amount()
+                    return_home()
                 
                 elif trash_type == "trash":
                     open_chute()
-                    time.sleep(1)
+                    time.sleep(0.7)
                     close_chute()
-                    rotate_servo(180)
-                    record_fill_amount("trash")
-                    rotate_servo(180)    
+                    rotate_servo(180, 1)
+                    record_fill_amount()
+                    return_home() 
                 
-                elif trash_type == "aluminum":
-                    rotate_servo(120)
+                elif trash_type == "plastic":
+                    rotate_servo(120, 1)
                     open_chute()
-                    time.sleep(1)
+                    time.sleep(0.7)
                     close_chute()
-                    rotate_servo(180)
-                    record_fill_amount("aluminum")
-                    rotate_servo(60)
+                    rotate_servo(180, 1)
+                    record_fill_amount()
+                    return_home()
 
-        ret1, frame1 = cap.read()
-        if ret1:
-            frame1 = frame1[100:500, 100:500]
-        time.sleep(1)
+            frame1 = get_frame()
 
 except KeyboardInterrupt:
     print("Exiting program...")
 finally:
-    cap.release()
     GPIO.cleanup()
