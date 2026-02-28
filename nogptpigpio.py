@@ -133,7 +133,7 @@ def rotate_servo(duration, direction):
   time.sleep(duration*mult/1000)
   pi.set_servo_pulsewidth(SERVO_R_PIN, 1500)
   time.sleep(0.03)
-  pi.set_servo_pulsewidth(SERVO_R_PIN, 1500)
+  pi.set_servo_pulsewidth(SERVO_R_PIN, 0)
   time.sleep(0.1)
 
 def return_home():
