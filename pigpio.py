@@ -47,7 +47,8 @@ containerFilled = False
 
 def get_frame():
     frame = picam.capture_array()
-    return frame[100:500, 100:500] """CHANGE"""
+    flipped = cv2.flip(test_frame, -1)
+    return flipped[100:500, 100:500] """CHANGE"""
 
 def detect_object():
     frame2 = get_frame()
