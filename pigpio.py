@@ -1,4 +1,3 @@
-#import RPi.GPIO as GPIO
 import time
 import cv2
 import numpy as np
@@ -15,7 +14,7 @@ pi = pigpio.pi()
 #camera code
 picam = Picamera2()
 config = picam.create_preview_configuration(
-    main={"format": "RGB888", "size": (640, 480)}
+    main={"format": "RGB888", "size": (1280, 720)}
 )
 picam.configure(config)
 
@@ -37,6 +36,8 @@ WHITE_LED = LED(23)
 RESET_BUTTON = Button(7)
 SENSOR = DistanceSensor(echo=6, trigger=5)
 LIM_SWITCH = Button(8)
+SERVO_R_PIN = 18
+SERVO_C_PIN = 17
 
 mult = 1.505 #multiplies arguments passed into rotate_servo() for accurate movement and timing
 
