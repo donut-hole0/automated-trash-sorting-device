@@ -22,7 +22,7 @@ picam.configure(config)
 #AI model setup
 # Load labels
 with open("labels.txt", "r") as f:
-    labels = [line.strip() for line in f.readlines()]
+    labels = [line.strip().split(" ", 1)[1] for line in f.readlines()]
 
 # Load model
 interpreter = tflite.Interpreter(model_path="model.tflite")
