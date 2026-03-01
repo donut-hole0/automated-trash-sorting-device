@@ -142,7 +142,7 @@ def return_home():
     time.sleep(0.01)
     print(f"LIM_SWITCH state before loop: {LIM_SWITCH.is_active}")
     print("returnSpin")
-    pi.set_servo_pulsewidth(SERVO_R_PIN, 1944) #change to -0.44 if wrong direction
+    pi.set_servo_pulsewidth(SERVO_R_PIN, 1056) #change to -0.44 if wrong direction
     start = time.monotonic() * 1000
     while start+700 > time.monotonic()*1000: #700ms is rotation duration
         if LIM_SWITCH.is_active:
