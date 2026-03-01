@@ -110,10 +110,7 @@ def classify_object():
     frame3 = cv2.resize(frame3, (224, 224))
 
     # Convert to numpy and normalize
-    input_data = np.array(frame3, dtype=np.float32)
-
-    # IMPORTANT: try this first (most Teachable Machine models use this)
-    input_data = (input_data / 127.5) - 1
+    input_data = np.array(frame3, dtype=np.uint8)
 
     # Add batch dimension
     input_data = np.expand_dims(input_data, axis=0)
@@ -127,7 +124,7 @@ def classify_object():
 
     # Get prediction
     predicted_index = np.argmax(output_data)
-    
+
 
 def rotate_servo(duration, direction):
   time.sleep(0.01)
