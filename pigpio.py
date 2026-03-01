@@ -53,7 +53,7 @@ RESET_BUTTON = Button(RESETBUTTON_PIN)
 SENSOR = DistanceSensor(echo=6, trigger=5)
 LIM_SWITCH = Button(LIM_SWITCH_PIN)
 
-mult = 1.65 #multiplies arguments passed in to rotate the servos for accurate movement and timing
+mult = input("enter mult value:") #multiplies arguments passed in to rotate the servos for accurate movement and timing
 
 frame1 = None
 
@@ -230,5 +230,6 @@ try:
 except KeyboardInterrupt:
     print("Exiting program...")
 finally:
+    pi.set_servo_pulsewidth(SERVO_R_PIN, 0)
     picam.stop()
     pi.stop()
