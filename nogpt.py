@@ -174,7 +174,7 @@ try:
             REDLED.on()
             print("full")
         else:
-            time.sleep(1000)
+            time.sleep(1)
             if detect_object():
                 WHITELED.on()
 
@@ -213,3 +213,4 @@ except KeyboardInterrupt:
     print("Exiting program...")
 finally:
     GPIO.cleanup()
+
