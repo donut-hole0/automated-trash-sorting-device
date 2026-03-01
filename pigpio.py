@@ -134,7 +134,7 @@ def rotate_servo(duration, direction):
   pi.set_servo_pulsewidth(SERVO_R_PIN, 1500 + int(444 * direction))
   time.sleep(duration*mult/1000)
   pi.set_servo_pulsewidth(SERVO_R_PIN, 1500)
-  time.sleep(0.03)
+  time.sleep(0.08)
   pi.set_servo_pulsewidth(SERVO_R_PIN, 0)
   time.sleep(0.1)
 
