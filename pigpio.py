@@ -185,6 +185,7 @@ try:
             RED_LED.off()
             frame1 = get_frame()
             print("reset fill")
+            time.sleep(1)
         if containerFilled:
             RED_LED.on()
             print("full")
