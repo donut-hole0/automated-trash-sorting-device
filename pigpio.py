@@ -167,7 +167,7 @@ def close_chute():
 def record_fill_amount():
     distance = SENSOR.distance * 100
     print(f"distance: {distance}")
-    if distance < 6:
+    if distance < 8:
         global containerFilled
         containerFilled = True
         print("recording succeeded")
