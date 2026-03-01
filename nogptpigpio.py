@@ -1,6 +1,5 @@
 import RPi.GPIO as GPIO
 import time
-#from gpiozero import LED, Button, Servo, DistanceSensor
 import cv2
 import numpy as np
 import tflite_runtime.interpreter as tflite
@@ -20,7 +19,6 @@ config = picam.create_preview_configuration(
 )
 picam.configure(config)
 
-#AI model setup
 # Load labels
 with open("labels.txt", "r") as f:
     labels = [line.strip() for line in f.readlines()]
@@ -36,12 +34,8 @@ output_details = interpreter.get_output_details()
 #Electrical component setup
 GPIO.setmode(GPIO.BCM)
 
-
-#ECHO_PIN = 6
-#TRIG_PIN = 5
 RESETBUTTON_PIN = 7
 LIM_SWITCH_PIN = 8
-"""You Can Change These GPIOs If Needed"""
 
 REDLED_PIN = 22
 WHITELED_PIN = 23
