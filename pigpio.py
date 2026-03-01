@@ -196,7 +196,7 @@ try:
                 trash_type = classify_object()
                 WHITE_LED.off()
 
-                if trash_type == "metal":
+                if trash_type == "aluminum":
                     rotate_servo(120, -1)
                     open_chute()
                     time.sleep(0.7)
