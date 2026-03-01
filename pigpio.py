@@ -125,6 +125,7 @@ def classify_object():
     # Get prediction
     predicted_index = np.argmax(output_data)
 
+    print(labels[predicted_index])
     return labels[predicted_index]
 
 
@@ -167,6 +168,7 @@ def close_chute():
     print("Chute closed")
 
 def record_fill_amount():
+    time.sleep(0.5)
     distance = SENSOR.distance * 100
     print(f"distance: {distance}")
     if distance < 8:
