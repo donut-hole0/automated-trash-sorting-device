@@ -5,8 +5,13 @@ import cv2
 import numpy as np
 import tflite_runtime.interpreter as tflite
 from picamera2 import Picamera2
-
 import pigpio
+from gpiozero import Button, LED
+from gpiozero import Device
+from gpiozero.pins.pigpio import PiGPIOFactory
+
+Device.pin_factory = PiGPIOFactory()
+
 pi = pigpio.pi()
 
 #camera code
