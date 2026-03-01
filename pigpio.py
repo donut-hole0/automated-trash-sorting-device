@@ -218,8 +218,8 @@ try:
                     record_fill_amount()
                     return_home()
 
-            time.sleep(1)
             frame1 = get_frame()
+            time.sleep(1)
 
 except KeyboardInterrupt:
     print("Exiting program...")
