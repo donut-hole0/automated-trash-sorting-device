@@ -1,4 +1,4 @@
-import RPi.GPIO as GPIO
+#import RPi.GPIO as GPIO
 import time
 import cv2
 import numpy as np
@@ -19,6 +19,7 @@ config = picam.create_preview_configuration(
 )
 picam.configure(config)
 
+#AI model setup
 # Load labels
 with open("labels.txt", "r") as f:
     labels = [line.strip() for line in f.readlines()]
@@ -32,10 +33,14 @@ input_details = interpreter.get_input_details()
 output_details = interpreter.get_output_details()
 
 #Electrical component setup
-GPIO.setmode(GPIO.BCM)
+#GPIO.setmode(GPIO.BCM)
 
+
+#ECHO_PIN = 6
+#TRIG_PIN = 5
 RESETBUTTON_PIN = 7
 LIM_SWITCH_PIN = 8
+"""You Can Change These GPIOs If Needed"""
 
 REDLED_PIN = 22
 WHITELED_PIN = 23
@@ -48,7 +53,7 @@ RESET_BUTTON = Button(RESETBUTTON_PIN)
 SENSOR = DistanceSensor(echo=6, trigger=5)
 LIM_SWITCH = Button(LIM_SWITCH_PIN)
 
-mult = 1.913
+mult = 1.913 #multiplies arguments passed in to rotate the servos for accurate movement and timing
 
 frame1 = None
 
@@ -122,8 +127,7 @@ def classify_object():
 
     # Get prediction
     predicted_index = np.argmax(output_data)
-
-    return labels[predicted_index]
+    
 
 def rotate_servo(duration, direction):
   time.sleep(0.01)
@@ -140,7 +144,7 @@ def return_home():
     pi.set_servo_pulsewidth(SERVO_R_PIN, 1944) #change to -0.44 if wrong direction
     start = time.monotonic() * 1000
     while start+700 > time.monotonic()*1000: #700ms is rotation duration
-        if pi.read(LIM_SWITCH_PIN) == 1:
+        if LIM_SWITCH.is_active:
             pi.set_servo_pulsewidth(SERVO_R_PIN, 1500)
             pi.set_servo_pulsewidth(SERVO_R_PIN, 0)
             print("home")
@@ -175,21 +179,21 @@ try:
     picam.start()
     frame1 = get_frame()
     while True:
-        if pi.read(RESETBUTTON_PIN):
+        if RESET_BUTTON.is_active:
             containerFilled = False
-            pi.write(REDLED_PIN, 0)
+            RED_LED.off()
             frame1 = get_frame()
             print("reset fill")
         if containerFilled:
-            pi.write(REDLED_PIN, 1)
+            RED_LED.on()
             print("full")
         else:
             time.sleep(1)
             if detect_object():
-                pi.write(WHITELED_PIN, 1)
-
+                WHITE_LED.on()
+                time.sleep(0.05)
                 trash_type = classify_object()
-                pi.write(WHITELED_PIN, 0)
+                WHITE_LED.off()
 
                 if trash_type == "metal":
                     rotate_servo(120, -1)
@@ -223,4 +227,5 @@ try:
 except KeyboardInterrupt:
     print("Exiting program...")
 finally:
+    picam.stop()
     pi.stop()
