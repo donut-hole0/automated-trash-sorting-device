@@ -199,7 +199,7 @@ try:
                 WHITE_LED.off()
 
                 if trash_type == "aluminum":
-                    rotate_servo(120, -1)
+                    rotate_servo(240, 1)
                     open_chute()
                     time.sleep(0.7)
                     close_chute()
