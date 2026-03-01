@@ -53,7 +53,7 @@ RESET_BUTTON = Button(RESETBUTTON_PIN)
 SENSOR = DistanceSensor(echo=6, trigger=5)
 LIM_SWITCH = Button(LIM_SWITCH_PIN)
 
-mult = int(input("enter mult value:")) #multiplies arguments passed in to rotate the servos for accurate movement and timing
+mult = float(input("enter mult value:")) #multiplies arguments passed in to rotate the servos for accurate movement and timing
 
 frame1 = None
 
