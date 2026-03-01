@@ -6,11 +6,15 @@ config = picam.create_preview_configuration(
     main={"format": "RGB888", "size": (1280, 720)}
 )
 picam.configure(config)
-
-test_frame = picam.capture_array()
-print(f"Frame shape: {test_frame.shape}")
-while True:
-  cv2.imshow("full_frame.jpg", test_frame)
+picam.start()
+try:
+    
+    while True:
+        test_frame = picam.capture_array()
+        cv2.imshow("full_frame.jpg", test_frame)
+        print(f"Frame shape: {test_frame.shape}")
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
 
 except KeyboardInterrupt:
     print("Exiting program...")
