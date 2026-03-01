@@ -20,7 +20,6 @@ config = picam.create_preview_configuration(
 picam.configure(config)
 
 #AI model setup
-# Load labels
 with open("labels.txt", "r") as f:
     labels = [line.strip().split(" ", 1)[1] for line in f.readlines()]
 
@@ -32,28 +31,14 @@ interpreter.allocate_tensors()
 input_details = interpreter.get_input_details()
 output_details = interpreter.get_output_details()
 
-#Electrical component setup
-#GPIO.setmode(GPIO.BCM)
-
-
-#ECHO_PIN = 6
-#TRIG_PIN = 5
-RESETBUTTON_PIN = 7
-LIM_SWITCH_PIN = 8
-"""You Can Change These GPIOs If Needed"""
-
-REDLED_PIN = 22
-WHITELED_PIN = 23
-SERVO_R_PIN = 18
-SERVO_C_PIN = 17
-
-RED_LED = LED(REDLED_PIN)
-WHITE_LED = LED(WHITELED_PIN)
-RESET_BUTTON = Button(RESETBUTTON_PIN)
+#Electrical Setup
+RED_LED = LED(22)
+WHITE_LED = LED(23)
+RESET_BUTTON = Button(7)
 SENSOR = DistanceSensor(echo=6, trigger=5)
-LIM_SWITCH = Button(LIM_SWITCH_PIN)
+LIM_SWITCH = Button(8)
 
-mult = 1.505 #multiplies arguments passed in to rotate the servos for accurate movement and timing
+mult = 1.505 #multiplies arguments passed into rotate_servo() for accurate movement and timing
 
 frame1 = None
 
@@ -61,33 +46,7 @@ containerFilled = False
 
 def get_frame():
     frame = picam.capture_array()
-    return frame[100:500, 100:500]
-
-def get_distance():
-    pi.write(TRIG_PIN, 0)
-    time.sleep(0.05)
-
-    pi.write(TRIG_PIN, 1)
-    time.sleep(0.00001)
-    pi.write(TRIG_PIN, 0)
-
-    timeout = time.time() + 0.2
-
-    while pi.read(ECHO_PIN)== 0:
-        pulse_start = time.time()
-        if time.time() > timeout:
-            return -1
-
-    while pi.read(ECHO_PIN) == 1:
-        pulse_end = time.time()
-        if time.time() > timeout:
-            return -1
-
-    pulse_duration = pulse_end - pulse_start
-    distance = pulse_duration * 17150
-    distance = round(distance, 2)
-
-    return distance
+    return frame[100:500, 100:500] """CHANGE"""
 
 def detect_object():
     frame2 = get_frame()
@@ -100,7 +59,7 @@ def detect_object():
         _, threshedDiff = cv2.threshold(diff, 30, 255, cv2.THRESH_BINARY)
         contours, _ = cv2.findContours(threshedDiff, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         for contour in contours:
-            if cv2.contourArea(contour) >= 600: #change to 500 or 550? Or maybe 650?
+            if cv2.contourArea(contour) >= 600:
                 return True
     return False
 
@@ -119,10 +78,8 @@ def classify_object():
     interpreter.set_tensor(input_details[0]['index'], input_data)
     interpreter.invoke()
 
-    # Get results
-    output_data = interpreter.get_tensor(output_details[0]['index'])
-
     # Get prediction
+    output_data = interpreter.get_tensor(output_details[0]['index'])
     predicted_index = np.argmax(output_data)
 
     print(labels[predicted_index])
@@ -138,35 +95,29 @@ def rotate_servo(duration, direction):
   pi.set_servo_pulsewidth(SERVO_R_PIN, 0)
   time.sleep(0.1)
 
-def return_home():
+def return_home(): #rotates lid back to its starting position
     time.sleep(0.01)
-    print(f"LIM_SWITCH state before loop: {LIM_SWITCH.is_active}")
-    print("returnSpin")
     pi.set_servo_pulsewidth(SERVO_R_PIN, 1056) #change to -0.44 if wrong direction
     start = time.monotonic() * 1000
     while start+700 > time.monotonic()*1000: #700ms is rotation duration
         if LIM_SWITCH.is_active:
             pi.set_servo_pulsewidth(SERVO_R_PIN, 1500)
             pi.set_servo_pulsewidth(SERVO_R_PIN, 0)
-            print("home")
             return
 
     pi.set_servo_pulsewidth(SERVO_R_PIN, 1500)
     pi.set_servo_pulsewidth(SERVO_R_PIN, 0)
-    print("home")
    
 
 def open_chute():
     pi.set_servo_pulsewidth(SERVO_C_PIN, 1500)
     time.sleep(0.16)
     pi.set_servo_pulsewidth(SERVO_C_PIN, 0)
-    print("Chute opened")
 
 def close_chute():
     pi.set_servo_pulsewidth(SERVO_C_PIN, 2500)
     time.sleep(0.16)
     pi.set_servo_pulsewidth(SERVO_C_PIN, 0)
-    print("Chute closed")
 
 def record_fill_amount():
     time.sleep(0.5)
@@ -175,7 +126,6 @@ def record_fill_amount():
     if distance < 8:
         global containerFilled
         containerFilled = True
-        print("recording succeeded")
 
 try: 
     picam.start()
