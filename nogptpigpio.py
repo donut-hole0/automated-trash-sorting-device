@@ -190,7 +190,7 @@ try:
             pi.write(REDLED_PIN, 1)
             print("full")
         else:
-            time.sleep(1000)
+            time.sleep(1)
             if detect_object():
                 pi.write(WHITELED_PIN, 1)
 
