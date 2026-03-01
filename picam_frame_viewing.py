@@ -8,13 +8,15 @@ config = picam.create_preview_configuration(
 picam.configure(config)
 picam.start()
 try:
+    
     while True:
         test_frame = picam.capture_array()
-        cv2.flip(test_frame, -1)
-        cv2.imshow("full_frame.jpg", test_frame)
+        flipped = cv2.flip(test_frame, -1)
+        cv2.imshow("full_frame.jpg", flipped)
         print(f"Frame shape: {test_frame.shape}")
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
 
 except KeyboardInterrupt:
     print("Exiting program...")
+
