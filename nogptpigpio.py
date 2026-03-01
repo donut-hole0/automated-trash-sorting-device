@@ -6,8 +6,7 @@ import numpy as np
 import tflite_runtime.interpreter as tflite
 from picamera2 import Picamera2
 import pigpio
-from gpiozero import Button, LED
-from gpiozero import Device
+from gpiozero import Device, LED, Button, DistanceSensor
 from gpiozero.pins.pigpio import PiGPIOFactory
 
 Device.pin_factory = PiGPIOFactory()
@@ -37,9 +36,9 @@ output_details = interpreter.get_output_details()
 #Electrical component setup
 GPIO.setmode(GPIO.BCM)
 
-#SENSOR = DistanceSensor(echo=6, trigger=5)
-ECHO_PIN = 6
-TRIG_PIN = 5
+
+#ECHO_PIN = 6
+#TRIG_PIN = 5
 RESETBUTTON_PIN = 7
 LIM_SWITCH_PIN = 8
 """You Can Change These GPIOs If Needed"""
@@ -48,13 +47,19 @@ REDLED_PIN = 22
 WHITELED_PIN = 23
 SERVO_R_PIN = 18
 SERVO_C_PIN = 17
-	
-pi.set_mode(TRIG_PIN, pigpio.OUTPUT)
-pi.set_mode(ECHO_PIN, pigpio.INPUT)
-pi.set_mode(RESETBUTTON_PIN, pigpio.INPUT)
-pi.set_mode(LIM_SWITCH_PIN, pigpio.INPUT)
-pi.set_mode(REDLED_PIN, pigpio.OUTPUT)
-pi.set_mode(WHITELED_PIN, pigpio.OUTPUT)
+
+RED_LED = LED(REDLED_PIN)
+WHITE_LED = LED(WHITELED_PIN)
+RESET_BUTTON = Button(RESETBUTTON_PIN)
+SENSOR = DistanceSensor(echo=6, trigger=5)
+LIM_SWITCH = Button(LIM_SWITCH_PIN)
+
+#pi.set_mode(TRIG_PIN, pigpio.OUTPUT)
+#pi.set_mode(ECHO_PIN, pigpio.INPUT)
+#pi.set_mode(RESETBUTTON_PIN, pigpio.INPUT)
+#pi.set_mode(LIM_SWITCH_PIN, pigpio.INPUT)
+#pi.set_mode(REDLED_PIN, pigpio.OUTPUT)
+#pi.set_mode(WHITELED_PIN, pigpio.OUTPUT)
 mult = 1.913
 
 frame1 = None
@@ -171,7 +176,7 @@ def close_chute():
     print("Chute closed")
 
 def record_fill_amount():
-    distance = get_distance()
+    distance = SENSOR.
     print("distance" + str(distance))
     if distance < 8:
         global containerFilled
