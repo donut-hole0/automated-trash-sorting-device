@@ -203,12 +203,14 @@ try:
                     rotate_servo(180, 1)
                     record_fill_amount()
                     return_home()
-
+                    
+            time.sleep(2)
             frame1 = get_frame()
 
 except KeyboardInterrupt:
     print("Exiting program...")
 finally:
     GPIO.cleanup()
+
 
 
