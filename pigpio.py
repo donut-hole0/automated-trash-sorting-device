@@ -125,6 +125,8 @@ def classify_object():
     # Get prediction
     predicted_index = np.argmax(output_data)
 
+    return labels[predicted_index]
+
 
 def rotate_servo(duration, direction):
   time.sleep(0.01)
