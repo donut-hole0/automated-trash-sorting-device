@@ -53,7 +53,7 @@ RESET_BUTTON = Button(RESETBUTTON_PIN)
 SENSOR = DistanceSensor(echo=6, trigger=5)
 LIM_SWITCH = Button(LIM_SWITCH_PIN)
 
-mult = 1.8 #multiplies arguments passed in to rotate the servos for accurate movement and timing
+mult = 1.65 #multiplies arguments passed in to rotate the servos for accurate movement and timing
 
 frame1 = None
 
@@ -140,6 +140,7 @@ def rotate_servo(duration, direction):
 
 def return_home():
     time.sleep(0.01)
+    print(f"LIM_SWITCH state before loop: {LIM_SWITCH.is_active}")
     print("returnSpin")
     pi.set_servo_pulsewidth(SERVO_R_PIN, 1944) #change to -0.44 if wrong direction
     start = time.monotonic() * 1000
