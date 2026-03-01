@@ -54,12 +54,6 @@ RESET_BUTTON = Button(RESETBUTTON_PIN)
 SENSOR = DistanceSensor(echo=6, trigger=5)
 LIM_SWITCH = Button(LIM_SWITCH_PIN)
 
-#pi.set_mode(TRIG_PIN, pigpio.OUTPUT)
-#pi.set_mode(ECHO_PIN, pigpio.INPUT)
-#pi.set_mode(RESETBUTTON_PIN, pigpio.INPUT)
-#pi.set_mode(LIM_SWITCH_PIN, pigpio.INPUT)
-#pi.set_mode(REDLED_PIN, pigpio.OUTPUT)
-#pi.set_mode(WHITELED_PIN, pigpio.OUTPUT)
 mult = 1.913
 
 frame1 = None
@@ -229,6 +223,7 @@ try:
                     record_fill_amount()
                     return_home()
 
+            time.sleep(1)
             frame1 = get_frame()
 
 except KeyboardInterrupt:
