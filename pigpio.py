@@ -112,13 +112,14 @@ def return_home(): #rotates lid back to its starting position
    
 
 def open_chute():
-    pi.set_servo_pulsewidth(SERVO_C_PIN, 2389)
-    time.sleep(0.5)
+    pi.set_servo_pulsewidth(SERVO_C_PIN, 2167)
+    time.sleep(1)
     pi.set_servo_pulsewidth(SERVO_C_PIN, 0)
 
 def close_chute():
-    pi.set_servo_pulsewidth(SERVO_C_PIN, 1661)
-    time.sleep(0.5)
+    time.sleep(0.1)    
+    pi.set_servo_pulsewidth(SERVO_C_PIN, 1611)
+    time.sleep(1)
     pi.set_servo_pulsewidth(SERVO_C_PIN, 0)
 
 def record_fill_amount():
@@ -152,6 +153,7 @@ try:
 
                 if trash_type == "aluminum":
                     rotate_servo(240, 1)
+                    time.sleep(1)
                     open_chute()
                     time.sleep(0.7)
                     close_chute()
@@ -161,6 +163,7 @@ try:
                    # return_home()
                 
                 elif trash_type == "trash":
+                    time.sleep(1)
                     open_chute()
                     time.sleep(0.7)
                     close_chute()
@@ -171,6 +174,7 @@ try:
                 
                 elif trash_type == "plastic":
                     rotate_servo(120, 1)
+                    time.sleep(1)
                     open_chute()
                     time.sleep(0.7)
                     close_chute()
