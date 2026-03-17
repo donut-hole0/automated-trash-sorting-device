@@ -112,18 +112,14 @@ def return_home(): #rotates lid back to its starting position
    
 
 def open_chute():
-    for i in range(2333, 1332, -1):
-        pi.set_servo_pulsewidth(SERVO_C_PIN, i)
-        time.sleep(0.02)
+    pi.set_servo_pulsewidth(SERVO_C_PIN, 1667)
     time.sleep(0.16)
-    pi.set_servo_pulsewidth(SERVO_C_PIN, 0)
+    pi.set_servo_pulsewidth(SERVO_C_PIN, 667)
 
 def close_chute():
-    for i in range(1333, 2334):
-        pi.set_servo_pulsewidth(SERVO_C_PIN, i)
-        time.sleep(0.02)
+    pi.set_servo_pulsewidth(SERVO_C_PIN, 667)
     time.sleep(0.16)
-    pi.set_servo_pulsewidth(SERVO_C_PIN, 0)
+    pi.set_servo_pulsewidth(SERVO_C_PIN, 1667)
 
 def record_fill_amount():
     time.sleep(0.5)
