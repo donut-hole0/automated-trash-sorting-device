@@ -39,7 +39,7 @@ LIM_SWITCH = Button(8)
 SERVO_R_PIN = 18
 SERVO_C_PIN = 17
 
-mult = 1.505 #multiplies arguments passed into rotate_servo() for accurate movement and timing
+mult = 5 #multiplies arguments passed into rotate_servo() for accurate movement and timing
 
 frame1 = None
 
@@ -112,14 +112,14 @@ def return_home(): #rotates lid back to its starting position
    
 
 def open_chute():
-    pi.set_servo_pulsewidth(SERVO_C_PIN, 1667)
-    time.sleep(0.16)
     pi.set_servo_pulsewidth(SERVO_C_PIN, 667)
+    time.sleep(0.5)
+    pi.set_servo_pulsewidth(SERVO_C_PIN, 0)
 
 def close_chute():
-    pi.set_servo_pulsewidth(SERVO_C_PIN, 667)
-    time.sleep(0.16)
     pi.set_servo_pulsewidth(SERVO_C_PIN, 1667)
+    time.sleep(0.5)
+    pi.set_servo_pulsewidth(SERVO_C_PIN, 0)
 
 def record_fill_amount():
     time.sleep(0.5)
