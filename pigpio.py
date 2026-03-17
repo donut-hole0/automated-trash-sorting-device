@@ -112,13 +112,13 @@ def return_home(): #rotates lid back to its starting position
    
 
 def open_chute():
-    pi.set_servo_pulsewidth(SERVO_C_PIN, 2167)
+    pi.set_servo_pulsewidth(SERVO_C_PIN, 1333)
     time.sleep(1)
     pi.set_servo_pulsewidth(SERVO_C_PIN, 0)
 
 def close_chute():
-    time.sleep(0.1)    
-    pi.set_servo_pulsewidth(SERVO_C_PIN, 1611)
+    time.sleep(0.3)    
+    pi.set_servo_pulsewidth(SERVO_C_PIN, 667)
     time.sleep(1)
     pi.set_servo_pulsewidth(SERVO_C_PIN, 0)
 
@@ -155,7 +155,7 @@ try:
                     rotate_servo(240, 1)
                     time.sleep(1)
                     open_chute()
-                    time.sleep(0.7)
+                    time.sleep(3)
                     close_chute()
                     rotate_servo(180, -1)
                     record_fill_amount()
@@ -165,7 +165,7 @@ try:
                 elif trash_type == "trash":
                     time.sleep(1)
                     open_chute()
-                    time.sleep(0.7)
+                    time.sleep(3)
                     close_chute()
                     rotate_servo(180, 1)
                     record_fill_amount()
@@ -176,7 +176,7 @@ try:
                     rotate_servo(120, 1)
                     time.sleep(1)
                     open_chute()
-                    time.sleep(0.7)
+                    time.sleep(3)
                     close_chute()
                     rotate_servo(180, 1)
                     record_fill_amount()
